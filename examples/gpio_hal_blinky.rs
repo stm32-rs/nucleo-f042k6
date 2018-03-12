@@ -15,7 +15,7 @@ fn main() {
     if let (Some(p), Some(cp)) = (stm32f042::Peripherals::take(), Peripherals::take()) {
         let gpiob = p.GPIOB.split();
 
-        /* (Re-)configure PA1 as output */
+        /* (Re-)configure PB3 as output */
         let mut led = gpiob.pb3.into_push_pull_output();
 
         /* Constrain clocking registers */
