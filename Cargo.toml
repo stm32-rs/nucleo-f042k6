@@ -3,7 +3,6 @@ authors = ["Daniel Egger <daniel@eggers-club.de>"]
 categories = [
     "embedded",
     "no-std",
-    "bsp",
 ]
 description = "Board support crate for the STM32 Nucleo-F042K6 microcontroller board"
 documentation = "https://docs.rs/nucleo-f042k6"
