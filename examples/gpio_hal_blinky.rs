@@ -2,11 +2,12 @@
 #![feature(const_fn)]
 #![no_std]
 
+extern crate panic_abort;
 extern crate stm32f042_hal as hal;
 
+use hal::delay::Delay;
 use hal::prelude::*;
 use hal::stm32f042;
-use hal::delay::Delay;
 
 extern crate cortex_m;
 use cortex_m::peripheral::Peripherals;

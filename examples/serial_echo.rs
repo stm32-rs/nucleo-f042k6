@@ -1,6 +1,7 @@
 #![feature(used)]
 #![no_std]
 
+extern crate panic_abort;
 extern crate stm32f042_hal as hal;
 
 use hal::prelude::*;
@@ -21,12 +22,7 @@ fn main() {
         let tx = gpioa.pa2.into_alternate_af1();
         let rx = gpioa.pa15.into_alternate_af1();
 
-        let serial = Serial::usart2(
-            p.USART2,
-            (tx, rx),
-            115_200.bps(),
-            clocks,
-        );
+        let serial = Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), clocks);
 
         let (mut tx, mut rx) = serial.split();
 

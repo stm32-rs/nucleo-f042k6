@@ -5,16 +5,16 @@
 #![feature(const_fn)]
 #![allow(non_camel_case_types)]
 
-pub extern crate stm32f042_hal as hal;
 pub extern crate stm32f042;
+pub extern crate stm32f042_hal as hal;
 
 extern crate bare_metal;
 extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate vcell;
 
-pub use stm32f042::*;
-pub use stm32f042::interrupt::*;
-pub use cortex_m_rt::*;
 pub use cortex_m::*;
+pub use cortex_m_rt::*;
 pub use hal::*;
+pub use stm32f042::interrupt::*;
+pub use stm32f042::*;
