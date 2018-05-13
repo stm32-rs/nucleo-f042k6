@@ -1,6 +1,11 @@
 #![feature(used)]
-#![feature(const_fn)]
+#![no_main]
 #![no_std]
+
+#[macro_use(entry, exception)]
+extern crate cortex_m_rt;
+
+use cortex_m_rt::ExceptionFrame;
 
 extern crate cortex_m;
 extern crate panic_abort;
@@ -18,7 +23,19 @@ use hal::stm32f042;
 
 use core::fmt::Write;
 
-fn main() {
+exception!(*, default_handler);
+
+fn default_handler(_irqn: i16) {}
+
+exception!(HardFault, hard_fault);
+
+fn hard_fault(_ef: &ExceptionFrame) -> ! {
+    loop {}
+}
+
+entry!(main);
+
+fn main() -> ! {
     if let Some(p) = stm32f042::Peripherals::take() {
         let gpiof = p.GPIOF.split();
         let mut rcc = p.RCC.constrain();
@@ -46,4 +63,6 @@ fn main() {
         let _ = disp.clear();
         let _ = write!(disp, "Hello world!");
     }
+
+    loop {}
 }
