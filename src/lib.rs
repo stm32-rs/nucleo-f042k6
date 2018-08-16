@@ -8,10 +8,8 @@
 pub extern crate stm32f042;
 pub extern crate stm32f042_hal as hal;
 
-extern crate bare_metal;
 extern crate cortex_m;
 extern crate cortex_m_rt;
-extern crate vcell;
 
 pub use cortex_m::*;
 pub use cortex_m_rt::*;
