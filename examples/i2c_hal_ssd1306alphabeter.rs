@@ -1,20 +1,15 @@
-#![feature(used)]
 #![no_main]
 #![no_std]
 
-#[macro_use(entry, exception)]
-extern crate cortex_m_rt;
-
-use cortex_m_rt::ExceptionFrame;
-
 extern crate cortex_m;
+extern crate cortex_m_rt;
 extern crate panic_abort;
-extern crate stm32f042_hal as hal;
 
 extern crate embedded_hal;
-//use embedded_hal::blocking::i2c::Write;
-
 extern crate ssd1306;
+extern crate stm32f042_hal as hal;
+
+use cortex_m_rt::entry;
 use ssd1306::mode::TerminalMode;
 use ssd1306::Builder;
 
@@ -24,18 +19,7 @@ use hal::stm32f042;
 
 use core::fmt::Write;
 
-exception!(*, default_handler);
-
-fn default_handler(_irqn: i16) {}
-
-exception!(HardFault, hard_fault);
-
-fn hard_fault(_ef: &ExceptionFrame) -> ! {
-    loop {}
-}
-
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     if let Some(p) = stm32f042::Peripherals::take() {
         let gpiof = p.GPIOF.split();
