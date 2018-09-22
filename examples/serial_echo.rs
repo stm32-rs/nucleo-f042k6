@@ -1,4 +1,3 @@
-#![feature(used)]
 #![no_main]
 #![no_std]
 
