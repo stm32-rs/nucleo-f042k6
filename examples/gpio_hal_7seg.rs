@@ -7,260 +7,159 @@ extern crate panic_abort;
 
 extern crate stm32f042_hal as hal;
 
-use cortex_m_rt::entry;
+use cortex_m_rt::{entry, exception};
 
-use hal::delay::Delay;
+use hal::gpio::gpioa::{PA11, PA8};
+use hal::gpio::gpiob::{PB0, PB1, PB4, PB5, PB6, PB7};
+use hal::gpio::gpiof::{PF0, PF1};
+use hal::gpio::{Output, PushPull};
 use hal::prelude::*;
 use hal::stm32f042;
 
+use cortex_m::interrupt::Mutex;
+use cortex_m::peripheral::syst::SystClkSource::Core;
 use cortex_m::peripheral::Peripherals;
+
+use core::cell::RefCell;
+
+extern crate sevensegment;
+use sevensegment::*;
+
+// Define the Mutex so we can share our display with the interrupt handler, blerk
+static DISPLAY: Mutex<
+    RefCell<
+        Option<
+            SevenSeg<
+                PB4<Output<PushPull>>,
+                PB5<Output<PushPull>>,
+                PA11<Output<PushPull>>,
+                PA8<Output<PushPull>>,
+                PF1<Output<PushPull>>,
+                PF0<Output<PushPull>>,
+                PB1<Output<PushPull>>,
+            >,
+        >,
+    >,
+> = Mutex::new(RefCell::new(None));
+
+// The pins we use for the 3 digits on this display
+static ONE: Mutex<RefCell<Option<PB0<Output<PushPull>>>>> = Mutex::new(RefCell::new(None));
+static TWO: Mutex<RefCell<Option<PB7<Output<PushPull>>>>> = Mutex::new(RefCell::new(None));
+static THREE: Mutex<RefCell<Option<PB6<Output<PushPull>>>>> = Mutex::new(RefCell::new(None));
+
+// The number we want to display
+static STATE: Mutex<RefCell<u16>> = Mutex::new(RefCell::new(0));
 
 #[entry]
 fn main() -> ! {
     if let (Some(p), Some(cp)) = (stm32f042::Peripherals::take(), Peripherals::take()) {
+        let mut syst = cp.SYST;
         let gpioa = p.GPIOA.split();
         let gpiob = p.GPIOB.split();
         let gpiof = p.GPIOF.split();
 
-        /* (Re-)configure PB3 as output */
-        let mut one = gpiob.pb0.into_push_pull_output();
-        let mut two = gpiob.pb7.into_push_pull_output();
-        let mut three = gpiob.pb6.into_push_pull_output();
-        let mut a = gpiob.pb4.into_push_pull_output();
-        let mut b = gpiob.pb5.into_push_pull_output();
-        let mut c = gpioa.pa11.into_push_pull_output();
-        let mut d = gpioa.pa8.into_push_pull_output();
-        let mut e = gpiof.pf1.into_push_pull_output();
-        let mut f = gpiof.pf0.into_push_pull_output();
-        let mut g = gpiob.pb1.into_push_pull_output();
+        // The GPIOs we use to drive the display, conveniently located at one side of the Nucleo
+        // breadboard connector
+        let mut one = gpiob.pb0.into_push_pull_output_hs();
+        let mut two = gpiob.pb7.into_push_pull_output_hs();
+        let mut three = gpiob.pb6.into_push_pull_output_hs();
+        let mut seg_a = gpiob.pb4.into_push_pull_output_hs();
+        let mut seg_b = gpiob.pb5.into_push_pull_output_hs();
+        let mut seg_c = gpioa.pa11.into_push_pull_output_hs();
+        let mut seg_d = gpioa.pa8.into_push_pull_output_hs();
+        let mut seg_e = gpiof.pf1.into_push_pull_output_hs();
+        let mut seg_f = gpiof.pf0.into_push_pull_output_hs();
+        let mut seg_g = gpiob.pb1.into_push_pull_output_hs();
 
-        /* Constrain clocking registers */
+        // Constrain clocking registers
         let mut rcc = p.RCC.constrain();
 
-        /* Configure clock to 8 MHz (i.e. the default) and freeze it */
-        let clocks = rcc.cfgr.sysclk(8.mhz()).freeze();
+        // Configure clock to 8 MHz (i.e. the default) and freeze it
+        let _ = rcc.cfgr.sysclk(8.mhz()).freeze();
 
-        /* Get delay provider */
-        let mut delay = Delay::new(cp.SYST, clocks);
+        // Set source for SysTick counter, here full operating frequency (== 8MHz)
+        syst.set_clock_source(Core);
 
-        let sevenseg = SevenSeg::new(a, b, c, d, e, f, g);
-        let mut multiseg = MultiSevenSeg::new(sevenseg, one, two, three);
+        // Set reload value, i.e. timer delay 8 MHz/counts
+        syst.set_reload(60_000 - 1);
 
+        // Start SysTick counter
+        syst.enable_counter();
+
+        // Start SysTick interrupt generation
+        syst.enable_interrupt();
+
+        // Assign the segments of the 7 segments display to driver
+        let mut sevenseg = SevenSeg::new(seg_a, seg_b, seg_c, seg_d, seg_e, seg_f, seg_g);
+
+        // Move driver handle and digit enable pins into Mutexes
+        cortex_m::interrupt::free(move |cs| {
+            *DISPLAY.borrow(cs).borrow_mut() = Some(sevenseg);
+            *ONE.borrow(cs).borrow_mut() = Some(one);
+            *TWO.borrow(cs).borrow_mut() = Some(two);
+            *THREE.borrow(cs).borrow_mut() = Some(three);
+        });
+
+        // Increase a counter that will be displayed
+        let mut counter = 0;
         loop {
-            multiseg.display(456);
+            counter += 1;
+
+            if counter % 65536 == 0 {
+                cortex_m::interrupt::free(move |cs| {
+                    *STATE.borrow(cs).borrow_mut() += 1;
+                });
+            }
         }
     }
 
     loop {}
 }
 
-use hal::hal::digital::OutputPin;
+#[exception]
+fn SysTick() -> ! {
+    static mut digit: u8 = 0;
+    use core::ops::{Deref, DerefMut};
 
-struct SevenSeg<A, B, C, D, E, F, G> {
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-}
+    /* Enter critical section */
+    cortex_m::interrupt::free(|cs| {
+        let num = *STATE.borrow(cs).borrow().deref();
+        let display = &*DISPLAY.borrow(cs);
+        let one = &*ONE.borrow(cs);
+        let two = &*TWO.borrow(cs);
+        let three = &*THREE.borrow(cs);
+        if let (Some(ref mut display), Some(ref mut one), Some(ref mut two), Some(ref mut three)) = (
+            display.borrow_mut().deref_mut(),
+            one.borrow_mut().deref_mut(),
+            two.borrow_mut().deref_mut(),
+            three.borrow_mut().deref_mut(),
+        ) {
+            display.display(17);
+            three.set_low();
+            two.set_low();
+            one.set_low();
 
-impl<A, B, C, D, E, F, G> SevenSeg<A, B, C, D, E, F, G>
-where
-    A: OutputPin,
-    B: OutputPin,
-    C: OutputPin,
-    D: OutputPin,
-    E: OutputPin,
-    F: OutputPin,
-    G: OutputPin,
-{
-    pub fn new(a: A, b: B, c: C, d: D, e: E, f: F, g: G) -> Self {
-        Self {
-            a,
-            b,
-            c,
-            d,
-            e,
-            f,
-            g,
+            *digit = match digit {
+                0 => {
+                    let lsb = num % 16;
+                    three.set_high();
+                    display.display(lsb as u8);
+                    1
+                }
+                1 => {
+                    let middle = (num / 16) % 16;
+                    two.set_high();
+                    display.display(middle as u8);
+                    2
+                }
+                2 => {
+                    let msb = (num / 256) % 16;
+                    one.set_high();
+                    display.display(msb as u8);
+                    0
+                }
+                _ => 0,
+            };
         }
-    }
-
-    pub fn release(self) -> (A, B, C, D, E, F, G) {
-        (self.a, self.b, self.c, self.d, self.e, self.f, self.g)
-    }
-
-    pub fn clear(&mut self) {
-        self.a.set_low();
-        self.b.set_low();
-        self.c.set_low();
-        self.d.set_low();
-        self.e.set_low();
-        self.f.set_low();
-        self.g.set_low();
-    }
-
-    pub fn display(&mut self, num: u8) {
-        match num {
-            0 => {
-                self.a.set_high();
-                self.b.set_high();
-                self.c.set_high();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_low();
-            }
-            1 => {
-                self.a.set_low();
-                self.b.set_low();
-                self.c.set_low();
-                self.d.set_low();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_low();
-            }
-            2 => {
-                self.a.set_high();
-                self.b.set_high();
-                self.c.set_low();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_low();
-                self.g.set_high();
-            }
-            3 => {
-                self.a.set_high();
-                self.b.set_low();
-                self.c.set_low();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            4 => {
-                self.a.set_low();
-                self.b.set_low();
-                self.c.set_high();
-                self.d.set_low();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            5 => {
-                self.a.set_high();
-                self.b.set_low();
-                self.c.set_high();
-                self.d.set_high();
-                self.e.set_low();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            6 => {
-                self.a.set_high();
-                self.b.set_high();
-                self.c.set_high();
-                self.d.set_high();
-                self.e.set_low();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            7 => {
-                self.a.set_low();
-                self.b.set_low();
-                self.c.set_low();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_low();
-            }
-            8 => {
-                self.a.set_high();
-                self.b.set_high();
-                self.c.set_high();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            9 => {
-                self.a.set_high();
-                self.b.set_low();
-                self.c.set_high();
-                self.d.set_high();
-                self.e.set_high();
-                self.f.set_high();
-                self.g.set_high();
-            }
-            _ => {
-                self.a.set_low();
-                self.b.set_low();
-                self.c.set_low();
-                self.d.set_low();
-                self.e.set_low();
-                self.f.set_low();
-                self.g.set_low();
-            }
-        }
-    }
-}
-
-struct MultiSevenSeg<A, B, C, D, E, F, G, ONE, TWO, THREE> {
-    sevenseg: SevenSeg<A, B, C, D, E, F, G>,
-    one: ONE,
-    two: TWO,
-    three: THREE,
-}
-
-impl<A, B, C, D, E, F, G, ONE, TWO, THREE> MultiSevenSeg<A, B, C, D, E, F, G, ONE, TWO, THREE>
-where
-    A: OutputPin,
-    B: OutputPin,
-    C: OutputPin,
-    D: OutputPin,
-    E: OutputPin,
-    F: OutputPin,
-    G: OutputPin,
-    ONE: OutputPin,
-    TWO: OutputPin,
-    THREE: OutputPin,
-{
-    pub fn new(sevenseg: SevenSeg<A, B, C, D, E, F, G>, one: ONE, two: TWO, three: THREE) -> Self {
-        Self {
-            sevenseg,
-            one,
-            two,
-            three,
-        }
-    }
-
-    pub fn release(self) -> (SevenSeg<A, B, C, D, E, F, G>, ONE, TWO, THREE) {
-        (self.sevenseg, self.one, self.two, self.three)
-    }
-
-    pub fn display(&mut self, num: u16) {
-        let digit3 = num % 10;
-        let digit2 = (num / 10) % 10;
-        let digit1 = (num / 100) % 10;
-
-        self.three.set_high();
-        for _ in 0..=10 {
-            self.sevenseg.display(digit3 as u8);
-        }
-        self.three.set_low();
-
-        self.two.set_high();
-        for _ in 0..=10 {
-            self.sevenseg.display(digit2 as u8);
-        }
-        self.two.set_low();
-
-        self.one.set_high();
-        for _ in 0..=10 {
-            self.sevenseg.display(digit1 as u8);
-        }
-        self.one.set_low();
-    }
+    });
 }
