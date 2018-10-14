@@ -15,13 +15,13 @@ use ssd1306::Builder;
 
 use hal::i2c::*;
 use hal::prelude::*;
-use hal::stm32f042;
+use hal::stm32;
 
 use core::fmt::Write;
 
 #[entry]
 fn main() -> ! {
-    if let Some(p) = stm32f042::Peripherals::take() {
+    if let Some(p) = stm32::Peripherals::take() {
         let gpiof = p.GPIOF.split();
         let mut rcc = p.RCC.constrain();
         let _ = rcc.cfgr.freeze();

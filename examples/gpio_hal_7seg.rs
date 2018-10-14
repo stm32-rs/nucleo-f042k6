@@ -14,7 +14,7 @@ use hal::gpio::gpiob::{PB0, PB1, PB4, PB5, PB6, PB7};
 use hal::gpio::gpiof::{PF0, PF1};
 use hal::gpio::{Output, PushPull};
 use hal::prelude::*;
-use hal::stm32f042;
+use hal::stm32;
 
 use cortex_m::interrupt::Mutex;
 use cortex_m::peripheral::syst::SystClkSource::Core;
@@ -52,7 +52,7 @@ static STATE: Mutex<RefCell<u16>> = Mutex::new(RefCell::new(0));
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (stm32f042::Peripherals::take(), Peripherals::take()) {
+    if let (Some(p), Some(cp)) = (stm32::Peripherals::take(), Peripherals::take()) {
         let mut syst = cp.SYST;
         let gpioa = p.GPIOA.split();
         let gpiob = p.GPIOB.split();

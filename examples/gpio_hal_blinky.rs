@@ -11,13 +11,13 @@ use cortex_m_rt::entry;
 
 use hal::delay::Delay;
 use hal::prelude::*;
-use hal::stm32f042;
+use hal::stm32;
 
 use cortex_m::peripheral::Peripherals;
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (stm32f042::Peripherals::take(), Peripherals::take()) {
+    if let (Some(p), Some(cp)) = (stm32::Peripherals::take(), Peripherals::take()) {
         let gpiob = p.GPIOB.split();
 
         /* (Re-)configure PB3 as output */
