@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(const_fn)]
 #![allow(non_camel_case_types)]
 
 pub extern crate stm32f042_hal as hal;

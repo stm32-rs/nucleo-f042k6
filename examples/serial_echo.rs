@@ -2,7 +2,7 @@
 #![no_std]
 
 extern crate cortex_m_rt;
-extern crate panic_abort;
+extern crate panic_halt;
 
 extern crate stm32f042_hal as hal;
 
