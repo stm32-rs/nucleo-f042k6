@@ -5,13 +5,13 @@ extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate panic_halt;
 
-extern crate stm32f042_hal as hal;
+extern crate stm32f0xx_hal as hal;
 
 use cortex_m_rt::entry;
 
-use hal::delay::Delay;
-use hal::prelude::*;
-use hal::stm32;
+use crate::hal::delay::Delay;
+use crate::hal::prelude::*;
+use crate::hal::stm32;
 
 use cortex_m::peripheral::Peripherals;
 

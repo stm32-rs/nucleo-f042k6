@@ -4,15 +4,15 @@
 extern crate cortex_m_rt;
 extern crate panic_halt;
 
-extern crate stm32f042_hal as hal;
+extern crate stm32f0xx_hal as hal;
 
 #[macro_use(block)]
 extern crate nb;
 
-use hal::prelude::*;
-use hal::stm32;
+use crate::hal::prelude::*;
+use crate::hal::stm32;
 
-use hal::serial::Serial;
+use crate::hal::serial::Serial;
 
 use cortex_m_rt::entry;
 

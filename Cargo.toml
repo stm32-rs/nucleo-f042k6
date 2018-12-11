@@ -14,26 +14,29 @@ keywords = [
 license = "0BSD"
 name = "nucleo-f042k6"
 repository = "https://github.com/therealprof/nucleo-f042k6"
-version = "0.4.2"
+version = "0.4.3"
 
 [dependencies]
 cortex-m = "0.5.8"
-cortex-m-rt = "0.6.5"
+cortex-m-rt = "0.6.6"
 
 [dependencies.embedded-hal]
 features = ["unproven"]
 version = "0.2.2"
 
-[dependencies.stm32f042-hal]
-features = ["rt"]
-version = "0.6.2"
+[dependencies.stm32f0xx-hal]
+features = ["stm32f042", "rt"]
+version = "0.8.0"
 
 [dev-dependencies]
 ssd1306 = "0.2.1"
 nb = "0.1.1"
 panic-halt = "0.2.0"
-ina260 = "0.2.3"
+ina260 = "0.2.6"
 sevensegment = "0.1.0"
+epd-waveshare = "0.2.0"
+numtoa = "0.2.3"
+embedded-graphics = "0.4.4"
 
 [dev-dependencies.shared-bus]
 features = ["cortexm"]

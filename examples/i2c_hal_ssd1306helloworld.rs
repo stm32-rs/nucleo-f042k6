@@ -7,15 +7,15 @@ extern crate panic_halt;
 
 extern crate embedded_hal;
 extern crate ssd1306;
-extern crate stm32f042_hal as hal;
+extern crate stm32f0xx_hal as hal;
 
 use cortex_m_rt::entry;
 use ssd1306::mode::TerminalMode;
 use ssd1306::Builder;
 
-use hal::i2c::*;
-use hal::prelude::*;
-use hal::stm32;
+use crate::hal::i2c::*;
+use crate::hal::prelude::*;
+use crate::hal::stm32;
 
 use core::fmt::Write;
 

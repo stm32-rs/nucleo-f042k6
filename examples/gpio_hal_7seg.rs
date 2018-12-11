@@ -5,16 +5,16 @@ extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate panic_halt;
 
-extern crate stm32f042_hal as hal;
+extern crate stm32f0xx_hal as hal;
 
 use cortex_m_rt::{entry, exception};
 
-use hal::gpio::gpioa::{PA11, PA8};
-use hal::gpio::gpiob::{PB0, PB1, PB4, PB5, PB6, PB7};
-use hal::gpio::gpiof::{PF0, PF1};
-use hal::gpio::{Output, PushPull};
-use hal::prelude::*;
-use hal::stm32;
+use crate::hal::gpio::gpioa::{PA11, PA8};
+use crate::hal::gpio::gpiob::{PB0, PB1, PB4, PB5, PB6, PB7};
+use crate::hal::gpio::gpiof::{PF0, PF1};
+use crate::hal::gpio::{Output, PushPull};
+use crate::hal::prelude::*;
+use crate::hal::stm32;
 
 use cortex_m::interrupt::Mutex;
 use cortex_m::peripheral::syst::SystClkSource::Core;
