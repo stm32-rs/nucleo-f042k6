@@ -1,11 +1,9 @@
 #![no_main]
 #![no_std]
 
-extern crate cortex_m;
-extern crate cortex_m_rt;
-extern crate panic_halt;
+use panic_halt;
 
-extern crate stm32f0xx_hal as hal;
+use stm32f0xx_hal as hal;
 
 use cortex_m_rt::{entry, exception};
 
@@ -60,19 +58,19 @@ fn main() -> ! {
 
         // The GPIOs we use to drive the display, conveniently located at one side of the Nucleo
         // breadboard connector
-        let mut one = gpiob.pb0.into_push_pull_output_hs();
-        let mut two = gpiob.pb7.into_push_pull_output_hs();
-        let mut three = gpiob.pb6.into_push_pull_output_hs();
-        let mut seg_a = gpiob.pb4.into_push_pull_output_hs();
-        let mut seg_b = gpiob.pb5.into_push_pull_output_hs();
-        let mut seg_c = gpioa.pa11.into_push_pull_output_hs();
-        let mut seg_d = gpioa.pa8.into_push_pull_output_hs();
-        let mut seg_e = gpiof.pf1.into_push_pull_output_hs();
-        let mut seg_f = gpiof.pf0.into_push_pull_output_hs();
-        let mut seg_g = gpiob.pb1.into_push_pull_output_hs();
+        let one = gpiob.pb0.into_push_pull_output_hs();
+        let two = gpiob.pb7.into_push_pull_output_hs();
+        let three = gpiob.pb6.into_push_pull_output_hs();
+        let seg_a = gpiob.pb4.into_push_pull_output_hs();
+        let seg_b = gpiob.pb5.into_push_pull_output_hs();
+        let seg_c = gpioa.pa11.into_push_pull_output_hs();
+        let seg_d = gpioa.pa8.into_push_pull_output_hs();
+        let seg_e = gpiof.pf1.into_push_pull_output_hs();
+        let seg_f = gpiof.pf0.into_push_pull_output_hs();
+        let seg_g = gpiob.pb1.into_push_pull_output_hs();
 
         // Constrain clocking registers
-        let mut rcc = p.RCC.constrain();
+        let rcc = p.RCC.constrain();
 
         // Configure clock to 8 MHz (i.e. the default) and freeze it
         let _ = rcc.cfgr.sysclk(8.mhz()).freeze();
@@ -90,7 +88,7 @@ fn main() -> ! {
         syst.enable_interrupt();
 
         // Assign the segments of the 7 segments display to driver
-        let mut sevenseg = SevenSeg::new(seg_a, seg_b, seg_c, seg_d, seg_e, seg_f, seg_g);
+        let sevenseg = SevenSeg::new(seg_a, seg_b, seg_c, seg_d, seg_e, seg_f, seg_g);
 
         // Move driver handle and digit enable pins into Mutexes
         cortex_m::interrupt::free(move |cs| {
@@ -113,7 +111,9 @@ fn main() -> ! {
         }
     }
 
-    loop {}
+    loop {
+        continue;
+    }
 }
 
 #[exception]
@@ -121,7 +121,7 @@ fn SysTick() -> ! {
     static mut digit: u8 = 0;
     use core::ops::{Deref, DerefMut};
 
-    /* Enter critical section */
+    // Enter critical section
     cortex_m::interrupt::free(|cs| {
         let num = *STATE.borrow(cs).borrow().deref();
         let display = &*DISPLAY.borrow(cs);

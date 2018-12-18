@@ -1,13 +1,11 @@
 #![no_main]
 #![no_std]
 
-extern crate cortex_m_rt;
-extern crate panic_halt;
+use panic_halt;
 
-extern crate stm32f0xx_hal as hal;
+use stm32f0xx_hal as hal;
 
-#[macro_use(block)]
-extern crate nb;
+use nb::block;
 
 use crate::hal::prelude::*;
 use crate::hal::stm32;
@@ -20,10 +18,10 @@ use cortex_m_rt::entry;
 fn main() -> ! {
     if let Some(p) = stm32::Peripherals::take() {
         let gpioa = p.GPIOA.split();
-        let mut rcc = p.RCC.constrain();
+        let rcc = p.RCC.constrain();
         let clocks = rcc.cfgr.sysclk(48.mhz()).freeze();
 
-        /* USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link */
+        // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
         let tx = gpioa.pa2.into_alternate_af1();
         let rx = gpioa.pa15.into_alternate_af1();
 
@@ -37,5 +35,7 @@ fn main() -> ! {
         }
     }
 
-    loop {}
+    loop {
+        continue;
+    }
 }
