@@ -1,22 +1,24 @@
 #![no_main]
 #![no_std]
 
+#[allow(unused)]
 use panic_halt;
 
 use stm32f0xx_hal as hal;
 
 use cortex_m_rt::entry;
 
-use crate::hal::gpio::{gpiof::PF0, gpiof::PF1, Alternate, AF1};
-use crate::hal::i2c::*;
-use crate::hal::prelude::*;
-use crate::hal::serial::Serial;
-use crate::hal::stm32::{self, interrupt, Interrupt::USART2};
+use crate::hal::{
+    gpio::{gpiof::PF0, gpiof::PF1, Alternate, AF1},
+    i2c::*,
+    prelude::*,
+    serial::Serial,
+    stm32::{self, interrupt, Interrupt::USART2},
+};
 
-use core::cell::RefCell;
-use core::fmt::Write;
-use core::ops::DerefMut;
 use cortex_m::interrupt::Mutex;
+
+use core::{cell::RefCell, fmt::Write, ops::DerefMut};
 
 // Make some peripherals globally available
 struct Shared {
@@ -29,48 +31,47 @@ static SHARED: Mutex<RefCell<Option<Shared>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (stm32::Peripherals::take(), cortex_m::Peripherals::take()) {
-        let gpioa = p.GPIOA.split();
-        let gpiof = p.GPIOF.split();
-        let rcc = p.RCC.constrain();
-        let clocks = rcc.cfgr.freeze();
-        let mut nvic = cp.NVIC;
+    if let (Some(mut p), Some(cp)) = (stm32::Peripherals::take(), cortex_m::Peripherals::take()) {
+        cortex_m::interrupt::free(|cs| {
+            let mut rcc = p.RCC.configure().sysclk(8.mhz()).freeze(&mut p.FLASH);
+            let gpioa = p.GPIOA.split(&mut rcc);
+            let gpiof = p.GPIOF.split(&mut rcc);
+            let mut nvic = cp.NVIC;
 
-        let scl = gpiof
-            .pf1
-            .into_alternate_af1()
-            .internal_pull_up(true)
-            .set_open_drain();
-        let sda = gpiof
-            .pf0
-            .into_alternate_af1()
-            .internal_pull_up(true)
-            .set_open_drain();
+            let scl = gpiof
+                .pf1
+                .into_alternate_af1(cs)
+                .internal_pull_up(cs, true)
+                .set_open_drain(cs);
+            let sda = gpiof
+                .pf0
+                .into_alternate_af1(cs)
+                .internal_pull_up(cs, true)
+                .set_open_drain(cs);
 
-        // Setup I2C1
-        let i2c = I2c::i2c1(p.I2C1, (scl, sda), 100.khz());
+            // Setup I2C1
+            let i2c = I2c::i2c1(p.I2C1, (scl, sda), 100.khz(), &mut rcc);
 
-        // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
-        let tx = gpioa.pa2.into_alternate_af1();
-        let rx = gpioa.pa15.into_alternate_af1();
+            // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
+            let tx = gpioa.pa2.into_alternate_af1(cs);
+            let rx = gpioa.pa15.into_alternate_af1(cs);
 
-        // Set up our serial port for output
-        let mut serial = Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), clocks);
+            // Set up our serial port for output
+            let mut serial = Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), &mut rcc);
 
-        // Enable USART2 interrupt on received input
-        serial.listen(hal::serial::Event::Rxne);
-        let (mut tx, rx) = serial.split();
+            // Enable USART2 interrupt on received input
+            serial.listen(hal::serial::Event::Rxne);
+            let (mut tx, rx) = serial.split();
 
-        // Enable USART2 interrupt and clear any pending interrupts
-        nvic.enable(USART2);
-        cortex_m::peripheral::NVIC::unpend(USART2);
+            // Enable USART2 interrupt and clear any pending interrupts
+            nvic.enable(USART2);
+            cortex_m::peripheral::NVIC::unpend(USART2);
 
-        // Print a welcome message
-        tx.write_str("\r\nWelcome to the I2C scanner. Enter any character to start scan.\r\n")
-            .ok();
+            // Print a welcome message
+            tx.write_str("\r\nWelcome to the I2C scanner. Enter any character to start scan.\r\n")
+                .ok();
 
-        // Move all components under Mutex supervision
-        cortex_m::interrupt::free(move |cs| {
+            // Move all components under Mutex supervision
             *SHARED.borrow(cs).borrow_mut() = Some(Shared { i2c, rx, tx });
         });
     }

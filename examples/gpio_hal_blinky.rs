@@ -8,33 +8,31 @@ use stm32f0xx_hal as hal;
 
 use cortex_m_rt::entry;
 
-use crate::hal::delay::Delay;
-use crate::hal::prelude::*;
-use crate::hal::stm32;
+use crate::hal::{delay::Delay, prelude::*, stm32};
 
 use cortex_m::peripheral::Peripherals;
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (stm32::Peripherals::take(), Peripherals::take()) {
-        let gpiob = p.GPIOB.split();
+    if let (Some(mut p), Some(cp)) = (stm32::Peripherals::take(), Peripherals::take()) {
+        cortex_m::interrupt::free(|cs| {
+            // Configure clock to 8 MHz (i.e. the default) and freeze it
+            let mut rcc = p.RCC.configure().sysclk(8.mhz()).freeze(&mut p.FLASH);
 
-        // (Re-)configure PB3 as output
-        let mut led = gpiob.pb3.into_push_pull_output();
+            // Obtain resources from GPIO port B
+            let gpiob = p.GPIOB.split(&mut rcc);
 
-        // Constrain clocking registers
-        let rcc = p.RCC.constrain();
+            // (Re-)configure PB3 as output
+            let mut led = gpiob.pb3.into_push_pull_output(cs);
 
-        // Configure clock to 8 MHz (i.e. the default) and freeze it
-        let clocks = rcc.cfgr.sysclk(8.mhz()).freeze();
+            // Get delay provider
+            let mut delay = Delay::new(cp.SYST, &rcc);
 
-        // Get delay provider
-        let mut delay = Delay::new(cp.SYST, clocks);
-
-        loop {
-            led.toggle();
-            delay.delay_ms(1_000_u16);
-        }
+            loop {
+                led.toggle();
+                delay.delay_ms(1_000_u16);
+            }
+        });
     }
 
     loop {

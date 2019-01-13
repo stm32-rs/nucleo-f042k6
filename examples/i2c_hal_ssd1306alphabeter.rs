@@ -7,21 +7,23 @@ use cortex_m_rt::entry;
 use ssd1306::mode::TerminalMode;
 use ssd1306::Builder;
 
-use crate::hal::i2c::*;
-use crate::hal::prelude::*;
-use crate::hal::serial::Serial;
-use crate::hal::stm32;
-
-use core::cell::RefCell;
-use core::fmt::Write;
+use crate::hal::{gpio::*, i2c::*, prelude::*, serial::*, stm32};
 use cortex_m::interrupt::Mutex;
 
-use core::ops::DerefMut;
-use crate::hal::stm32::USART2;
+use core::{cell::RefCell, fmt::Write, ops::DerefMut};
 
 // Make the write part of our serial port globally available
-static PANIC_SERIAL: Mutex<RefCell<Option<hal::serial::Tx<USART2>>>> =
-    Mutex::new(RefCell::new(None));
+static PANIC_SERIAL: Mutex<
+    RefCell<
+        Option<
+            hal::serial::Serial<
+                stm32::USART2,
+                gpioa::PA2<Alternate<AF1>>,
+                gpioa::PA15<Alternate<AF1>>,
+            >,
+        >,
+    >,
+> = Mutex::new(RefCell::new(None));
 
 use core::panic::PanicInfo;
 
@@ -41,45 +43,45 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[entry]
 fn main() -> ! {
-    if let Some(p) = stm32::Peripherals::take() {
-        let gpioa = p.GPIOA.split();
-        let gpiof = p.GPIOF.split();
-        let rcc = p.RCC.constrain();
-        let clocks = rcc.cfgr.freeze();
+    if let Some(mut p) = stm32::Peripherals::take() {
+        let mut disp = cortex_m::interrupt::free(|cs| {
+            let mut rcc = p.RCC.configure().sysclk(48.mhz()).freeze(&mut p.FLASH);
+            let gpioa = p.GPIOA.split(&mut rcc);
+            let gpiof = p.GPIOF.split(&mut rcc);
 
-        let scl = gpiof
-            .pf1
-            .into_alternate_af1()
-            .internal_pull_up(true)
-            .set_open_drain();
-        let sda = gpiof
-            .pf0
-            .into_alternate_af1()
-            .internal_pull_up(true)
-            .set_open_drain();
+            let scl = gpiof
+                .pf1
+                .into_alternate_af1(cs)
+                .internal_pull_up(cs, true)
+                .set_open_drain(cs);
+            let sda = gpiof
+                .pf0
+                .into_alternate_af1(cs)
+                .internal_pull_up(cs, true)
+                .set_open_drain(cs);
 
-        // Setup I2C1
-        let i2c = I2c::i2c1(p.I2C1, (scl, sda), 400.khz());
+            // Setup I2C1
+            let i2c = I2c::i2c1(p.I2C1, (scl, sda), 400.khz(), &mut rcc);
 
-        // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
-        let tx = gpioa.pa2.into_alternate_af1();
-        let rx = gpioa.pa15.into_alternate_af1();
+            // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
+            let tx = gpioa.pa2.into_alternate_af1(cs);
+            let rx = gpioa.pa15.into_alternate_af1(cs);
 
-        let serial = Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), clocks);
+            let serial = Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), &mut rcc);
 
-        let (tx, mut _rx) = serial.split();
+            // Transfer write part of serial port into Mutex
+            *PANIC_SERIAL.borrow(cs).borrow_mut() = Some(serial);
 
-        // Transfer write part of serial port into Mutex
-        cortex_m::interrupt::free(|cs| {
-            *PANIC_SERIAL.borrow(cs).borrow_mut() = Some(tx);
+            use ssd1306::displayrotation::DisplayRotation;
+            let mut disp: TerminalMode<_> =
+                Builder::new().with_i2c_addr(0x3c).connect_i2c(i2c).into();
+
+            let _ = disp.set_rotation(DisplayRotation::Rotate180);
+            disp.init().unwrap();
+            let _ = disp.clear();
+
+            disp
         });
-
-        use ssd1306::displayrotation::DisplayRotation;
-        let mut disp: TerminalMode<_> = Builder::new().with_i2c_addr(0x3c).connect_i2c(i2c).into();
-
-        let _ = disp.set_rotation(DisplayRotation::Rotate180);
-        disp.init().unwrap();
-        let _ = disp.clear();
 
         // Endless loop
         loop {

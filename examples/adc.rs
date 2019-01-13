@@ -6,16 +6,12 @@ use panic_halt;
 
 use stm32f0xx_hal as hal;
 
-use crate::hal::prelude::*;
-use crate::hal::stm32;
+use crate::hal::{prelude::*, stm32};
 
-use cortex_m::{interrupt::Mutex, peripheral::syst::SystClkSource::Core};
+use cortex_m::{interrupt::Mutex, peripheral::syst::SystClkSource::Core, peripheral::Peripherals};
 use cortex_m_rt::{entry, exception};
 
-use core::fmt::Write;
-use core::ptr;
-
-use core::cell::RefCell;
+use core::{cell::RefCell, fmt::Write, ptr};
 
 struct Shared {
     adc: hal::adc::Adc,
@@ -50,54 +46,49 @@ fn calculate_vdda(reading: u16) -> u16 {
 
 #[entry]
 fn main() -> ! {
-    if let (Some(p), Some(cp)) = (
-        hal::stm32::Peripherals::take(),
-        cortex_m::peripheral::Peripherals::take(),
-    ) {
-        let gpioa = p.GPIOA.split();
-        let rcc = p.RCC.constrain();
-        let clocks = rcc.cfgr.sysclk(8.mhz()).freeze();
+    if let (Some(mut p), Some(cp)) = (stm32::Peripherals::take(), Peripherals::take()) {
+        cortex_m::interrupt::free(|cs| {
+            let mut rcc = p.RCC.configure().freeze(&mut p.FLASH);
+            let gpioa = p.GPIOA.split(&mut rcc);
+            let mut syst = cp.SYST;
 
-        let mut syst = cp.SYST;
+            // Set source for SysTick counter, here full operating frequency (== 8MHz)
+            syst.set_clock_source(Core);
 
-        // Set source for SysTick counter, here full operating frequency (== 8MHz)
-        syst.set_clock_source(Core);
+            // Set reload value, i.e. timer delay 8 MHz/counts
+            syst.set_reload(8_000_000 - 1);
 
-        // Set reload value, i.e. timer delay 8 MHz/counts
-        syst.set_reload(8_000_000 - 1);
+            // Start SysTick counter
+            syst.enable_counter();
 
-        // Start SysTick counter
-        syst.enable_counter();
+            // Start SysTick interrupt generation
+            syst.enable_interrupt();
 
-        // Start SysTick interrupt generation
-        syst.enable_interrupt();
+            // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
+            let tx = gpioa.pa2.into_alternate_af1(cs);
+            let rx = gpioa.pa15.into_alternate_af1(cs);
 
-        // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
-        let tx = gpioa.pa2.into_alternate_af1();
-        let rx = gpioa.pa15.into_alternate_af1();
+            // Initialiase UART
+            let (mut tx, _) =
+                hal::serial::Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), &mut rcc).split();
 
-        // Initialiase UART
-        let (mut tx, _) =
-            hal::serial::Serial::usart2(p.USART2, (tx, rx), 115_200.bps(), clocks).split();
+            // Initialise ADC
+            let mut adc = hal::adc::Adc::new(p.ADC, &mut rcc);
 
-        // Initialise ADC
-        let mut adc = hal::adc::Adc::new(p.ADC);
+            // Initialise core temperature sensor
+            let mut temp = hal::adc::VTemp::new();
 
-        // Initialise core temperature sensor
-        let mut temp = hal::adc::VTemp::new();
+            // Initialise voltage reference sensor
+            let mut reference = hal::adc::VRef::new();
 
-        // Initialise voltage reference sensor
-        let mut reference = hal::adc::VRef::new();
+            // And enable readings
+            temp.enable(&mut adc);
+            reference.enable(&mut adc);
 
-        // And enable readings
-        temp.enable(&mut adc);
-        reference.enable(&mut adc);
+            // Output a friendly greeting
+            tx.write_str("\n\rThis ADC example will read various values using the ADC and print them out to the serial terminal\r\n").ok();
 
-        // Output a friendly greeting
-        tx.write_str("\n\rThis ADC example will read various values using the ADC and print them out to the serial terminal\r\n").ok();
-
-        // Move all components under Mutex supervision
-        cortex_m::interrupt::free(move |cs| {
+            // Move all components under Mutex supervision
             *SHARED.borrow(cs).borrow_mut() = Some(Shared {
                 adc,
                 temp,
