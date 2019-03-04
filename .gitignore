@@ -4,3 +4,4 @@
 **/*.bk
 Cargo.lock
 bloat_log*
+stack_usage*
