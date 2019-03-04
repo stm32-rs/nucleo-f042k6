@@ -10,4 +10,4 @@ for i in `find examples -name "*.rs"`; do
         cargo bloat --release --example $name >>$filename
 done
 
-echo "Captures bloat for all examples into $filename"
+echo "Captured bloat for all examples into $filename"
