@@ -13,8 +13,8 @@ interface, so all that one needs to get going with progamming this device is:
 * A bit of open source software
 
 [STM Nucleo-F042K6]: https://os.mbed.com/platforms/ST-Nucleo-F042K6/
-[cortex-m]:(https://github.com/rust-embedded/cortex-m)
-[cortex-m-rt]:(https://github.com/rust-embedded/cortex-m-rt)
+[cortex-m]: https://github.com/rust-embedded/cortex-m
+[cortex-m-rt]: https://github.com/rust-embedded/cortex-m-rt
 
 License
 -------
