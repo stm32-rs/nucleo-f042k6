@@ -18,7 +18,7 @@ use crate::hal::{
 
 // the eink library
 use epd_waveshare::{
-    epd1in54::{Buffer1in54, EPD1in54},
+    epd1in54::{Display1in54, EPD1in54},
     graphics::Display,
     prelude::*,
 };
@@ -55,8 +55,7 @@ fn main() -> ! {
             let mut epd = EPD1in54::new(&mut spi, cs, busy, dc, rst, &mut delay).unwrap();
 
             // Setup the graphics
-            let mut buffer = Buffer1in54::default();
-            let mut display = Display::new(epd.width(), epd.height(), &mut buffer.buffer);
+            let mut display = Display1in54::default();
 
             display.draw(
                 Font12x16::render_str("Hello Rust!")

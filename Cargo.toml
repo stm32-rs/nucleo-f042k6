@@ -26,9 +26,9 @@ version = "0.13.0"
 
 [dev-dependencies]
 embedded-graphics = "0.4.7"
-epd-waveshare = "0.2.0"
+epd-waveshare = "0.3.1"
 ina260 = "0.2.6"
-nb = "0.1.1"
+nb = "0.1.2"
 numtoa = "0.2.3"
 panic-halt = "0.2.0"
 sevensegment = "0.1.0"
