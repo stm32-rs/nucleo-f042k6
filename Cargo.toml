@@ -7,14 +7,14 @@ edition = "2018"
 keywords = ["arm", "cortex-m", "template"]
 license = "0BSD"
 name = "nucleo-f042k6"
-repository = "https://github.com/therealprof/nucleo-f042k6"
-version = "0.6.0"
+repository = "https://github.com/stm32-rs/nucleo-f042k6"
+version = "0.7.0"
 readme = "README.md"
 
 [dependencies]
 bare-metal = "0.2.4"
-cortex-m = "0.5.8"
-cortex-m-rt = "0.6.7"
+cortex-m = "0.6.0"
+cortex-m-rt = "0.6.8"
 
 [dependencies.embedded-hal]
 features = ["unproven"]
@@ -22,7 +22,7 @@ version = "0.2.2"
 
 [dependencies.stm32f0xx-hal]
 features = ["stm32f042", "rt"]
-version = "0.13.0"
+version = "0.14.0"
 
 [dev-dependencies]
 embedded-graphics = "0.4.7"
