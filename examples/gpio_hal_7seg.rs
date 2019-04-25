@@ -119,7 +119,7 @@ fn main() -> ! {
 
 #[exception]
 fn SysTick() -> ! {
-    static mut digit: u8 = 0;
+    static mut DIGIT: u8 = 0;
     use core::ops::{Deref, DerefMut};
 
     // Enter critical section
@@ -140,7 +140,7 @@ fn SysTick() -> ! {
             two.set_low();
             one.set_low();
 
-            *digit = match digit {
+            *DIGIT = match DIGIT {
                 0 => {
                     let lsb = num % 16;
                     three.set_high();
