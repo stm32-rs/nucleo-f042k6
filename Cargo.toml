@@ -8,31 +8,31 @@ keywords = ["arm", "cortex-m", "template"]
 license = "0BSD"
 name = "nucleo-f042k6"
 repository = "https://github.com/stm32-rs/nucleo-f042k6"
-version = "0.7.0"
+version = "0.8.0"
 readme = "README.md"
 
 [dependencies]
 bare-metal = "0.2.4"
 cortex-m = "0.6.0"
-cortex-m-rt = "0.6.8"
+cortex-m-rt = "0.6.10"
 
 [dependencies.embedded-hal]
 features = ["unproven"]
-version = "0.2.2"
+version = "0.2.3"
 
 [dependencies.stm32f0xx-hal]
 features = ["stm32f042", "rt"]
-version = "0.14.0"
+version = "0.15.0"
 
 [dev-dependencies]
 embedded-graphics = "0.4.7"
-epd-waveshare = "0.3.1"
+epd-waveshare = "0.3.2"
 ina260 = "0.2.6"
 nb = "0.1.2"
 numtoa = "0.2.3"
 panic-halt = "0.2.0"
 sevensegment = "0.1.0"
-ssd1306 = "0.2.4"
+ssd1306 = "0.2.6"
 
 [dev-dependencies.shared-bus]
 features = ["cortexm"]
@@ -46,6 +46,7 @@ rt = []
 [profile]
 [profile.dev]
 debug = true
+opt-level = 1
 
 [profile.release]
 debug = true
