@@ -61,7 +61,7 @@ fn main() -> ! {
 // Define an exception handler, i.e. function to call when exception occurs. Here, if our SysTick
 // timer generates an exception the following handler will be called
 #[exception]
-fn SysTick() -> ! {
+fn SysTick() {
     // Our moved LED pin
     static mut LED: Option<LEDPIN> = None;
 
@@ -73,13 +73,13 @@ fn SysTick() -> ! {
         // Check state variable, keep LED off most of the time and turn it on every 10th tick
         if *STATE < 10 {
             // Turn off the LED
-            led.set_low();
+            led.set_low().ok();
 
             // And now increment state variable
             *STATE += 1;
         } else {
             // Turn on the LED
-            led.set_high();
+            led.set_high().ok();
 
             // And set new state variable back to 0
             *STATE = 0;

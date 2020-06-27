@@ -18,13 +18,18 @@ use crate::hal::{
 
 // the eink library
 use epd_waveshare::{
+    color::Black,
     epd1in54::{Display1in54, EPD1in54},
     graphics::Display,
     prelude::*,
 };
 
 // Graphics
-use embedded_graphics::{coord::Coord, fonts::Font12x16, prelude::*, primitives::Circle, Drawing};
+use embedded_graphics::fonts::{Font12x16, Text};
+use embedded_graphics::pixelcolor::BinaryColor;
+use embedded_graphics::prelude::*;
+use embedded_graphics::primitives::*;
+use embedded_graphics::style::{PrimitiveStyle, TextStyleBuilder};
 
 pub const MODE: Mode = Mode {
     polarity: Polarity::IdleHigh,
@@ -57,19 +62,19 @@ fn main() -> ! {
             // Setup the graphics
             let mut display = Display1in54::default();
 
-            display.draw(
-                Font12x16::render_str("Hello Rust!")
-                    .with_stroke(Some(Color::Black))
-                    .with_fill(Some(Color::White))
-                    .translate(Coord::new(5, 50))
-                    .into_iter(),
-            );
+            let text_style = TextStyleBuilder::new(Font12x16)
+                .text_color(BinaryColor::On)
+                .build();
 
-            display.draw(
-                Circle::new(Coord::new(80, 80), 80)
-                    .with_stroke(Some(Color::Black))
-                    .into_iter(),
-            );
+            Text::new("Hello Rust!", Point::new(5, 50))
+                .into_styled(text_style)
+                .draw(&mut display)
+                .ok();
+
+            Circle::new(Point::new(80, 80), 80)
+                .into_styled(PrimitiveStyle::with_stroke(Black, 1))
+                .draw(&mut display)
+                .ok();
 
             // Transfer the frame data to the epd
             let _ = epd.update_frame(&mut spi, &display.buffer());

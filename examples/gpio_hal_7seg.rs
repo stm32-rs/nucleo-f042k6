@@ -118,7 +118,7 @@ fn main() -> ! {
 }
 
 #[exception]
-fn SysTick() -> ! {
+fn SysTick() {
     static mut DIGIT: u8 = 0;
     use core::ops::{Deref, DerefMut};
 
@@ -135,28 +135,27 @@ fn SysTick() -> ! {
             two.borrow_mut().deref_mut(),
             three.borrow_mut().deref_mut(),
         ) {
-            display.display(17);
-            three.set_low();
-            two.set_low();
-            one.set_low();
+            three.set_low().ok();
+            two.set_low().ok();
+            one.set_low().ok();
 
             *DIGIT = match DIGIT {
                 0 => {
                     let lsb = num % 16;
-                    three.set_high();
-                    display.display(lsb as u8);
+                    three.set_high().ok();
+                    display.display(lsb as u8).ok();
                     1
                 }
                 1 => {
                     let middle = (num / 16) % 16;
-                    two.set_high();
-                    display.display(middle as u8);
+                    two.set_high().ok();
+                    display.display(middle as u8).ok();
                     2
                 }
                 2 => {
                     let msb = (num / 256) % 16;
-                    one.set_high();
-                    display.display(msb as u8);
+                    one.set_high().ok();
+                    display.display(msb as u8).ok();
                     0
                 }
                 _ => 0,

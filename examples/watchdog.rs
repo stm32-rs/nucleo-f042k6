@@ -31,16 +31,16 @@ fn main() -> ! {
             let mut delay = hal::delay::Delay::new(cp.SYST, &rcc);
 
             // LED on for 2s to indicate start of example
-            led.set_high();
+            led.set_high().ok();
             delay.delay_ms(2000_u16);
-            led.set_low();
+            led.set_low().ok();
 
             // Arm watchdog with 1s timeout
             watchdog.start(hal::time::Hertz(1));
 
             // Toggle LED a few times a tad slower within the timeout
             for _ in 0..=3 {
-                led.toggle();
+                led.toggle().ok();
                 delay.delay_ms(200_u16);
             }
 
@@ -49,7 +49,7 @@ fn main() -> ! {
 
             // Now keep on toggling the LED quickly until the watchdog triggers a reset
             loop {
-                led.toggle();
+                led.toggle().ok();
                 delay.delay_ms(100_u16);
             }
         });

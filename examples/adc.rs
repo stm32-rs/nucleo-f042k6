@@ -104,7 +104,7 @@ fn main() -> ! {
 }
 
 #[exception]
-fn SysTick() -> ! {
+fn SysTick() {
     use core::ops::DerefMut;
 
     // Enter critical section
