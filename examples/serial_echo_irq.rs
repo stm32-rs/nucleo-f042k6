@@ -29,11 +29,10 @@ static SHARED: Mutex<RefCell<Option<Shared>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
-    if let (Some(mut p), Some(cp)) = (stm32::Peripherals::take(), cortex_m::Peripherals::take()) {
+    if let Some(mut p) = stm32::Peripherals::take() {
         cortex_m::interrupt::free(|cs| {
             let mut rcc = p.RCC.configure().sysclk(48.mhz()).freeze(&mut p.FLASH);
             let gpioa = p.GPIOA.split(&mut rcc);
-            let mut nvic = cp.NVIC;
 
             // USART2 at PA2 (TX) and PA15(RX) is connectet to ST-Link
             let tx = gpioa.pa2.into_alternate_af1(cs);
@@ -54,7 +53,9 @@ fn main() -> ! {
             *SHARED.borrow(cs).borrow_mut() = Some(Shared { serial });
 
             // Enable USART IRQ and clear any pending IRQs
-            nvic.enable(USART2);
+            unsafe {
+                cortex_m::peripheral::NVIC::unmask(USART2);
+            }
             cortex_m::peripheral::NVIC::unpend(USART2);
         });
     }
