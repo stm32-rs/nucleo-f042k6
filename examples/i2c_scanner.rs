@@ -30,12 +30,11 @@ static SHARED: Mutex<RefCell<Option<Shared>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
-    if let (Some(mut p), Some(cp)) = (stm32::Peripherals::take(), cortex_m::Peripherals::take()) {
+    if let Some(mut p) = stm32::Peripherals::take() {
         cortex_m::interrupt::free(|cs| {
             let mut rcc = p.RCC.configure().sysclk(8.mhz()).freeze(&mut p.FLASH);
             let gpioa = p.GPIOA.split(&mut rcc);
             let gpiof = p.GPIOF.split(&mut rcc);
-            let mut nvic = cp.NVIC;
 
             let scl = gpiof
                 .pf1
@@ -62,7 +61,9 @@ fn main() -> ! {
             serial.listen(hal::serial::Event::Rxne);
 
             // Enable USART2 interrupt and clear any pending interrupts
-            nvic.enable(USART2);
+            unsafe {
+                cortex_m::peripheral::NVIC::unmask(USART2);
+            }
             cortex_m::peripheral::NVIC::unpend(USART2);
 
             // Print a welcome message
