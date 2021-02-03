@@ -22,7 +22,7 @@ version = "0.2.4"
 
 [dependencies.stm32f0xx-hal]
 features = ["stm32f042", "rt"]
-version = "0.16.0"
+version = "0.17.0"
 
 [dev-dependencies]
 embedded-graphics = "0.6.2"
@@ -33,6 +33,8 @@ numtoa = "0.2.3"
 panic-halt = "0.2.0"
 sevensegment = "0.2"
 ssd1306 = "0.3.1"
+display-interface = "0.4.0"
+display-interface-spi = "0.4.0"
 
 [dev-dependencies.shared-bus]
 features = ["cortexm"]
